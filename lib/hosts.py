@@ -33,8 +33,10 @@ class Host(object):
         return key_file
 
     def __init_logpath(self, log_path):
-        if log_path and not os.path.exists(os.path.dirname(log_path)):
-            os.makedirs(log_path)
+        if log_path:
+            log_dir = os.path.dirname(log_path)
+            if not os.path.exists(log_dir):
+                os.makedirs(log_dir)
 
     def __init_mongod(self, params, ssl):
         cfg = self.mongod_default.copy()

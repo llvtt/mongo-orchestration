@@ -192,8 +192,8 @@ def kill_mprocess(pid, timeout=20):
         pid - process pid
     """
     if pid and proc_alive(pid):
-        os.kill(pid, 2)
         try:
+            os.kill(pid, 2)
             os.wait()
         except OSError:
             pass
