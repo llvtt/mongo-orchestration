@@ -194,7 +194,7 @@ def kill_mprocess(pid, timeout=20):
     if pid and proc_alive(pid):
         try:
             os.kill(pid, 2)
-            os.wait()
+            os.waitpid(pid, 0)
         except OSError:
             pass
         t_start = time.time()

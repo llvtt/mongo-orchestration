@@ -121,6 +121,14 @@ def main():
         entity_id = "shard_cluster_1"
         configuration = {'id': entity_id}
 
+        routers = {'routers': [
+            {'port': 27017,
+             'logpath': logpath_for_port(27017)},
+            {'port': 27018,
+             'logpath': logpath_for_port(27018)}]}
+        for router in routers['routers']:
+            router.update(test_params)
+
         config_params = base_params.copy()
         config_params.update(params_for_port(27016))
 
@@ -131,6 +139,8 @@ def main():
             {'id': 'sh01',
              'shardParams': {
                  'procParams': proc_params}}]
+        configuration['configsvrs'] = [config_params]
+        configuration.update(routers)
 
         request_url += '/sh'
     else:
