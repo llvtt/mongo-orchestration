@@ -7,24 +7,23 @@ echo "Authentication: $authentication"
 echo "SSL: $ssl"
 echo "-------------------------------------------------------"
 
+$BASEPATH="C:\\mongo"
 # Note: backslashes must be escaped in the following string:
-$DATAPATH="C:\\mongo\\data"
+$DATAPATH="$($BASEPATH)\\data"
 # Note: backslashes must be escaped in the following string:
 $SSL_FILES_ROOT="C:\\Users\\Luke\\code\\mongo-orchestration\\ssl-files"
-# TODO: this variable will be injected
-$WORKSPACE="C:\\mongo"
 # Note: backslashes must be escaped in the following string:
-$LOGPATH="$WORKSPACE\\log"
+$LOGPATH="$WORKSPACE\\logs"
 
 # Clean up files
-del -Recurse $DATAPATH
-del -Recurse $LOGPATH
+del -Recurse -Force $DATAPATH
+del -Recurse -Force $LOGPATH
 
 md "$($DATAPATH)\db27016"
 md "$($DATAPATH)\db27017"
 md "$($DATAPATH)\db27018"
 md "$($DATAPATH)\db27019"
-md "$($WORKSPACE)\logs"
+md "$LOGPATH"
 
 if (($server -eq "22-release") -Or ($server -eq "20-release")) {
     $TEST_PARAMS='"vv" : true, '

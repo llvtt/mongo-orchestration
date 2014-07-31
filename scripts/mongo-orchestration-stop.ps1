@@ -22,5 +22,5 @@ foreach ($python in $pythons) {
 }
 
 echo "remove old files from $BASE_PATH"
-del -Recurse $BASE_PATH
+del -Recurse -Force $BASE_PATH
 echo "====== END CLEANUP ======"
