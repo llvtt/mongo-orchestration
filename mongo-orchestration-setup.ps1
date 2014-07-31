@@ -16,11 +16,15 @@ $WORKSPACE="C:\\mongo"
 # Note: backslashes must be escaped in the following string:
 $LOGPATH="$WORKSPACE\\log"
 
-md "$DATAPATH\db27016"
-md "$DATAPATH\db27017"
-md "$DATAPATH\db27018"
-md "$DATAPATH\db27019"
-md "$WORKSPACE\logs"
+# Clean up files
+del -Recurse $DATAPATH
+del -Recurse $LOGPATH
+
+md "$($DATAPATH)\db27016"
+md "$($DATAPATH)\db27017"
+md "$($DATAPATH)\db27018"
+md "$($DATAPATH)\db27019"
+md "$($WORKSPACE)\logs"
 
 if (($server -eq "22-release") -Or ($server -eq "20-release")) {
     $TEST_PARAMS='"vv" : true, '
@@ -36,7 +40,7 @@ if ($authentication -eq "auth") {
 
 if ($ssl -eq "ssl") {
    echo "Using SSL"
-   $SSL_PARAMS='"sslParams": {"sslMode": "requireSSL", "sslAllowInvalidCertificates" : true, "sslPEMKeyFile":"$SSL_FILES_ROOT\\server.pem", "sslCAFile": "$SSL_FILES_ROOT\\ca.pem", "sslWeakCertificateValidation" : true},'
+   $SSL_PARAMS="`"sslParams`": {`"sslMode`": `"requireSSL`", `"sslAllowInvalidCertificates`" : true, `"sslPEMKeyFile`":`"$($SSL_FILES_ROOT)\\server.pem`", `"sslCAFile`": `"$($SSL_FILES_ROOT)\\ca.pem`", `"sslWeakCertificateValidation`" : true},"
 }
 
 echo "TEST_PARAMS=$TEST_PARAMS"
@@ -49,49 +53,30 @@ echo "-------------------------------------------------------"
 
 $http_request = New-Object -ComObject Msxml2.XMLHTTP
 if ($configuration -eq "single_server") {
-    $url = "http://localhost:8889/hosts"
+    $post_url = "http://localhost:8889/hosts"
+    $get_url = "http://localhost:8889/hosts"
     $request_body="{$AUTH_PARAMS $SSL_PARAMS `"name`": `"mongod`", `"procParams`": {$TEST_PARAMS `"port`": 27017, `"dbpath`": `"$DATAPATH`", `"logpath`":`"$($LOGPATH)\\mongo.log`", `"ipv6`":true, `"logappend`":true, `"nojournal`":true}}"
 } elseif ($configuration -eq "replica_set") {
-    $url = "http://localhost:8889/rs"
+    $post_url = "http://localhost:8889/rs"
+    $get_url = "http://localhost:8889/rs/repl0"
     $request_body="{$AUTH_PARAMS $SSL_PARAMS `"id`": `"repl0`", `"members`":[{`"rsParams`":{`"priority`": 99}, `"procParams`": {$TEST_PARAMS `"dbpath`":`"$($DATAPATH)\\db27017`", `"port`": 27017, `"logpath`":`"$($LOGPATH)\\db27017.log`", `"nojournal`":false, `"nohttpinterface`": true, `"noprealloc`":true, `"smallfiles`":true, `"nssize`":1, `"oplogSize`": 150, `"ipv6`": true}}, {`"rsParams`": {`"priority`": 1.1}, `"procParams`":{$TEST_PARAMS `"dbpath`":`"$($DATAPATH)\\db27018`", `"port`": 27018, `"logpath`":`"$($LOGPATH)\\db27018.log`", `"nojournal`":false, `"nohttpinterface`": true, `"noprealloc`":true, `"smallfiles`":true, `"nssize`":1, `"oplogSize`": 150, `"ipv6`": true}}, {`"procParams`":{`"dbpath`":`"$($DATAPATH)\\db27019`", `"port`": 27019, `"logpath`":`"$($LOGPATH)\\27019.log`", `"nojournal`":false, `"nohttpinterface`": true, `"noprealloc`":true, `"smallfiles`":true, `"nssize`":1, `"oplogSize`": 150, `"ipv6`": true}}]}" 
 } elseif ($configuration -eq "sharded") {
-    $url = "http://127.0.0.1:8889/sh"
+    $post_url = "http://localhost:8889/sh"
+    $get_url = "http://localhost:8889/sh/shard_cluster_1"
     $request_body = "{$AUTH_PARAMS $SSL_PARAMS `"routers`": [{$TEST_PARAMS `"port`": 27017, `"logpath`": `"$LOGPATH\\router27017.log`"}, {$TEST_PARAMS `"port`": 27018, `"logpath`": `"$LOGPATH\\router27018.log`"}], `"configsvrs`": [{`"port`": 27016, `"dbpath`": `"$DATAPATH\\db27016`", `"logpath`": `"$LOGPATH\\configsvr27016.log`"}], `"id`": `"shard_cluster_1`", `"members`": [{`"id`": `"sh01`", `"shardParams`": {`"procParams`": {$TEST_PARAMS `"port`": 27020, `"dbpath`": `"$DATAPATH\\db27020`", `"logpath`":`"$LOGPATH\\db27020.log`", `"ipv6`":true, `"logappend`":true, `"nojournal`":false}}}]}" 
 } else{
     echo "Unrecognized configuration: $configuration"
     exit 1
 }
-echo "Sending $request_body to $url"
-$http_request.open('POST', $url, $false)
+echo "Sending $request_body to $post_url"
+$http_request.open('POST', $post_url, $false)
 $http_request.setRequestHeader("Content-Type", "application/json")
 $http_request.setRequestHeader("Accept", "application/json")
 $http_request.send($request_body)
 $response = $http_request.statusText
-echo $response
 
-# if [ "$2" == "single_server" ]; then
-#   echo curl -i -H "Accept: application/json" -X POST -d "{$AUTH_PARAMS $SSL_PARAMS \"name\": \"mongod\", \"procParams\": {$TEST_PARAMS \"port\": 27017, \"dbpath\": \"$DATAPATH\", \"logpath\":\"$LOGPATH/mongo.log\", \"ipv6\":true, \"logappend\":true, \"nojournal\":false}}" http://localhost:8889/hosts
-#   curl -i -H "Accept: application/json" -X POST -d "{$AUTH_PARAMS $SSL_PARAMS \"name\": \"mongod\", \"procParams\": { $TEST_PARAMS \"port\": 27017, \"dbpath\": \"$DATAPATH\", \"logpath\":\"$LOGPATH/mongo.log\", \"ipv6\":true, \"logappend\":true, \"nojournal\":false}}" http://localhost:8889/hosts
-#   echo curl -i -H "Accept: application/json" -X GET http://localhost:8889/hosts
-#   curl -f -i -H "Accept: application/json" -X GET http://localhost:8889/hosts
-
-# elif [ "$2" == "replica_set" ]; then
-  
-#   echo curl -i -H "Accept: application/json" -X POST -d "{$AUTH_PARAMS $SSL_PARAMS \"id\": \"repl0\", \"members\":[{\"rsParams\":{\"priority\": 99}, \"procParams\": {$TEST_PARAMS \"dbpath\":\"$DATAPATH/db27017\", \"port\": 27017, \"logpath\":\"$LOGPATH/\
-# db27017.log\", \"nojournal\":false, \"nohttpinterface\": true, \"noprealloc\":true, \"smallfiles\":true, \"nssize\":1, \"oplogSize\": 150, \"ipv6\": true}}, {\"rsParams\": {\"priority\": 1.1}, \"procParams\":{$TEST_PARAMS \"dbpath\":\
-# \"$DATAPATH/db27018\", \"port\": 27018, \"logpath\":\"$LOGPATH/db27018.log\", \"nojournal\":false, \"nohttpinterface\": true, \"noprealloc\":true, \"smallfiles\":true, \"nssize\":1, \"oplogSize\": 150, \"ipv6\": true}}, \
-# {\"procParams\":{$TEST_PARAMS \"dbpath\":\"$DATAPATH/db27019\", \"port\": 27019, \"logpath\":\"$LOGPATH/27019.log\", \"nojournal\":false, \"nohttpinterface\": true, \"noprealloc\":true, \"smallfiles\":true, \"nssize\":1, \"oplogSize\": 150, \"ipv6\": true}}]}" http://localhost:8889/rs
-#   curl -i -H "Accept: application/json" -X POST -d "{$AUTH_PARAMS $SSL_PARAMS \"id\": \"repl0\", \"members\":[{\"rsParams\":{\"priority\": 99}, \"procParams\": {$TEST_PARAMS \"dbpath\":\"$DATAPATH/db27017\", \"port\": 27017, \"logpath\":\"$LOGPATH/db270\
-# 17.log\", \"nojournal\":false, \"nohttpinterface\": true, \"noprealloc\":true, \"smallfiles\":true, \"nssize\":1, \"oplogSize\": 150, \"ipv6\": true}}, {\"rsParams\": {\"priority\": 1.1}, \"procParams\":{$TEST_PARAMS \"dbpath\":\"$DA\
-# TAPATH/db27018\", \"port\": 27018, \"logpath\":\"$LOGPATH/db27018.log\", \"nojournal\":false, \"nohttpinterface\": true, \"noprealloc\":true, \"smallfiles\":true, \"nssize\":1, \"oplogSize\": 150, \"ipv6\": true}}, {\"pr\
-# ocParams\":{\"dbpath\":\"$DATAPATH/db27019\", \"port\": 27019, \"logpath\":\"$LOGPATH/27019.log\", \"nojournal\":false, \"nohttpinterface\": true, \"noprealloc\":true, \"smallfiles\":true, \"nssize\":1, \"oplogSize\": 150, \"ipv6\": true}}]}" http://localhost:8889/rs
-#   echo curl -i -H "Accept: application/json" -X GET http://localhost:8889/rs/repl0/primary
-#   curl -f -i -H "Accept: application/json" -X GET http://localhost:8889/rs/repl0/primary
-
-# elif [ "$2" == "sharded" ]; then
-#   echo curl -i -H "Accept: application/json" -X POST -d "{$AUTH_PARAMS $SSL_PARAMS \"routers\": [{$TEST_PARAMS \"port\": 27017, \"logpath\": \"$LOGPATH/router27017.log\"}, {$TEST_PARAMS \"port\": 27018, \"logpath\": \"$LOGPATH/router27018.log\"}], \"configsvrs\": [{\"port\": 27016, \"dbpath\": \"$DATAPATH/db27016\", \"logpath\": \"$LOGPATH/configsvr27016.log\"}], \"id\": \"shard_cluster_1\", \"members\": [{\"id\": \"sh01\", \"shardParams\": {\"procParams\": {$TEST_PARAMS \"port\": 27020, \"dbpath\": \"$DATAPATH/db27020\", \"logpath\":\"$LOGPATH/db27020.log\", \"ipv6\":true, \"logappend\":true, \"nojournal\":false}}}]}" http://127.0.0.1:8889/sh
-#   curl -i -H "Accept: application/json" -X POST -d "{$AUTH_PARAMS $SSL_PARAMS \"routers\": [{$TEST_PARAMS \"port\": 27017, \"logpath\": \"$LOGPATH/router27017.log\"}, {$TEST_PARAMS \"port\": 27018, \"logpath\": \"$LOGPATH/router27018.log\"}], \"configsvrs\": [{\"port\": 27016, \"dbpath\": \"$DATAPATH/db27016\", \"logpath\": \"$LOGPATH/configsvr27016.log\"}], \"id\": \"shard_cluster_1\", \"members\": [{\"id\": \"sh01\", \"shardParams\": {\"procParams\": {$TEST_PARAMS \"port\": 27020, \"dbpath\": \"$DATAPATH/db27020\", \"logpath\":\"$LOGPATH/db27020.log\", \"ipv6\":true, \"logappend\":true, \"nojournal\":false}}}]}" http://127.0.0.1:8889/sh
-#   echo curl -f -i -H "Accept: application/json" -X GET http://localhost:8889/sh/shard_cluster_1
-#   curl -f -i -H "Accept: application/json" -X GET http://localhost:8889/sh/shard_cluster_1
-
-# fi
+$get_request = New-Object -ComObject Msxml2.XMLHTTP
+$get_request.open('GET', $get_url, $false)
+$get_request.setRequestHeader("Accept", "application/json")
+$get_request.send("")
+echo $get_request.statusText

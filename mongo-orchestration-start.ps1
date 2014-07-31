@@ -1,9 +1,6 @@
+param([string]$configuration_file="mongo-orchestration-windows.config", [string]$release, [string]$python_bin="C:\\Python27\\python.exe", [string]$git_branch="master")
+
 $BASE_PATH="C:\mongo"
-$CONFIG_FILE="C:\Users\luke\code\mongo-orchestration\mongo-orchestration.config"
-$RELEASE="26-release"
-$PYTHON_BIN="C:\Python27\python.exe"
-
-
 
 echo "====== CLEANUP ======"
 echo "*** Killing any existing MongoDB Processes which may not have shut down on a prior job."
@@ -27,5 +24,9 @@ echo "remove old files from $BASE_PATH"
 del -Recurse $BASE_PATH
 echo "====== END CLEANUP ======"
 
-echo "Start-Process -FilePath $PYTHON_BIN -ArgumentList server.py,start,-f,$CONFIG_FILE,-e,$RELEASE,--no-fork"
-Start-Process -FilePath $PYTHON_BIN -ArgumentList server.py,start,-f,$CONFIG_FILE,-e,$RELEASE,--no-fork
+# TODO: change back to upstream repo
+git clone https://github.com/lovett89/mongo-orchestration.git --branch $git_branch --depth 1
+cd mongo-orchestration
+
+echo "Start-Process -FilePath $python_bin -ArgumentList server.py,start,-f,$configuration_file,-e,$release,--no-fork"
+Start-Process -FilePath $python_bin -ArgumentList server.py,start,-f,$configuration_file,-e,$release,--no-fork
