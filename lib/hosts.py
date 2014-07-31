@@ -176,7 +176,9 @@ class Host(object):
         # If neither journal nor nojournal is specified, assume nojournal=True
         journaling_enabled = (self.cfg.get('journal') or
                               not self.cfg.get('nojournal', True))
-        return (not journaling_enabled and os.path.exists(lock_file) and len(open(lock_file, 'r').read())) > 0
+        return (not journaling_enabled and
+                os.path.exists(lock_file) and
+                len(open(lock_file, 'r').read()) > 0)
 
     def start(self, timeout=300):
         """start host
