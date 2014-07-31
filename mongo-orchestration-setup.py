@@ -106,13 +106,15 @@ def main():
         proc_params2 = base_params.copy()
         proc_params2.update(params_for_port(27018))
         proc_params2.update(test_params)
-        rs_params2['procParams'] = proc_params1
+        rs_params2['procParams'] = proc_params2
 
         proc_params3 = base_params.copy()
         proc_params3.update(params_for_port(27019))
         proc_params3.update(test_params)
 
-        configuration['members'] = [rs_params1, rs_params2, proc_params3]
+        configuration['members'] = [rs_params1,
+                                    rs_params2,
+                                    {'procParams': proc_params3}]
 
         request_url += '/rs'
     elif configuration == 'sharded':
