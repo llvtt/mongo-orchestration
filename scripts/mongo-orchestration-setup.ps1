@@ -11,7 +11,10 @@ $BASEPATH="C:\\mongo"
 # Note: backslashes must be escaped in the following string:
 $DATAPATH="$($BASEPATH)\\data"
 # Note: backslashes must be escaped in the following string:
-$SSL_FILES_ROOT="C:\\Users\\Luke\\code\\mongo-orchestration\\ssl-files"
+$SSL_FILES_ROOT="C:\\test-lib\\ssl-files"
+# This environment variable is injected by Jenkins.
+# Uncomment the following line to use this script outside of Jenkins:
+# $WORKSPACE="C:\\mongo"
 # Note: backslashes must be escaped in the following string:
 $LOGPATH="$WORKSPACE\\logs"
 
