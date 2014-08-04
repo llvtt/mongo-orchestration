@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # coding=utf-8
 
+import platform
 import socket
 import subprocess
 import time
@@ -16,6 +17,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+DEVNULL = open(os.devnull, 'wb')
 HOSTNAME = 'localhost'
 
 
@@ -164,14 +166,14 @@ def mprocess(name, config_path, port=None, timeout=180):
     try:
         logger.debug("execute process: {cmd}".format(**locals()))
         proc = subprocess.Popen(cmd,
-                                stdout=subprocess.PIPE,
+                                stdout=DEVNULL,
                                 stderr=subprocess.STDOUT)
 
         if proc.poll() == 0:
             logger.debug("process is not alive")
             raise OSError
     except (OSError, TypeError) as err:
-        logger.debug("exception while executing process: {err}".format(err=err))
+        logger.exception("exception while executing process: {err}".format(err=err))
         raise OSError
     if timeout > 0 and wait_for(port, timeout):
         logger.debug("process '{name}' has started: pid={proc.pid}, host={host}".format(**locals()))
@@ -186,7 +188,7 @@ def mprocess(name, config_path, port=None, timeout=180):
     return (proc.pid, host)
 
 
-def kill_mprocess(pid, timeout=20):
+def kill_mprocess(pid, timeout=60):
     """kill process
     Args:
         pid - process pid
@@ -199,6 +201,7 @@ def kill_mprocess(pid, timeout=20):
             pass
         t_start = time.time()
         while proc_alive(pid) and time.time() - t_start < timeout:
+            logger.debug("waiting for process %d to die..." % pid)
             time.sleep(1.5)
     return not proc_alive(pid)
 
@@ -219,6 +222,10 @@ def remove_path(path):
     If path is None - do nothing"""
     if path is None or not os.path.exists(path):
         return
+    # Need write permissions on file to remove it on Windows.
+    # Some files are created without granting write privilege (e.g., keyfile).
+    if platform.system() == 'Windows':
+        os.chmod(path, stat.S_IWRITE)
     if os.path.isdir(path):
         shutil.rmtree(path)
     if os.path.isfile(path):
@@ -265,12 +272,31 @@ def read_config(config_path):
     return result
 
 
-def proc_alive(pid):
-    """check if process with pid is alive
-    Return True or False"""
+if platform.system() == 'Windows':
+    import ctypes.wintypes
 
-    try:
-        os.kill(pid, 0)
-        return True
-    except (OSError, TypeError):
-        return False
+    _STILL_ACTIVE = 259
+    _PROCESS_QUERY_LTD_INFORMATION = 0x1000
+
+    def proc_alive(pid):
+        kernel32 = ctypes.windll.kernel32
+        handle = kernel32.OpenProcess(_PROCESS_QUERY_LTD_INFORMATION, 0, pid)
+        if handle == 0:
+            return False
+
+        exit_code = ctypes.wintypes.DWORD()
+        is_running = (
+            kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)) == 0)
+        kernel32.CloseHandle(handle)
+
+        return is_running or exit_code.value == _STILL_ACTIVE        
+else:
+    def proc_alive(pid):
+        """check if process with pid is alive
+        Return True or False"""
+
+        try:
+            os.kill(pid, 0)
+            return True
+        except (OSError, TypeError):
+            return False

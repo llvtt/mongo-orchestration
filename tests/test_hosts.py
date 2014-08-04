@@ -1,6 +1,8 @@
 #!/usr/bin/python
 # coding=utf-8
 
+import logging
+
 import sys
 sys.path.insert(0, '../')
 import unittest
@@ -15,6 +17,8 @@ import operator
 import pymongo
 from nose.plugins.attrib import attr
 
+logger = logging.getLogger(__name__)
+logging.basicConfig()
 
 @attr('hosts')
 @attr('test')
@@ -43,10 +47,9 @@ class HostsTestCase(unittest.TestCase):
         self.assertEqual(id(self.hosts), id(Hosts()))
 
     def test_set_settings(self):
-        path = tempfile.mktemp(prefix="test-set-settings-")
+        self.path = tempfile.mktemp(prefix="test-set-settings-")
         self.hosts.set_settings(path)
         self.assertEqual(path, self.hosts.pids_file)
-        self.remove_path(path)
 
     def test_bool(self):
         self.assertEqual(False, bool(self.hosts))
@@ -57,7 +60,8 @@ class HostsTestCase(unittest.TestCase):
         host_id = self.hosts.create('mongod', {}, autostart=False)
         self.assertTrue(len(self.hosts) == 1)
         self.assertTrue(host_id in self.hosts)
-        host_id2, host2 = 'host-id2', Host('mongod', {})
+        host_id2 = 'host-id2'
+        host2 = Host(os.path.join(os.environ.get('MONGOBIN', ''), 'mongod'), {})
         host2.start(30)
         host2_pid = host2.info()['procInfo']['pid']
         self.hosts[host_id2] = host2
@@ -167,6 +171,7 @@ class HostTestCase(unittest.TestCase):
     def tearDown(self):
         if hasattr(self, 'host'):
             self.host.stop()
+            time.sleep(10)
             self.host.cleanup()
 
     def test_host(self):
@@ -207,8 +212,9 @@ class HostTestCase(unittest.TestCase):
         fd_log, log_path = tempfile.mkstemp()
         db_path = tempfile.mkdtemp()
         params = {'logPath': log_path, 'dbpath': db_path}
-        host2 = Host('mongod', params)
-        host2.start(30)
+        host2 = Host(os.path.join(os.environ.get('MONGOBIN', ''), 'mongod'),
+                     params)
+        host2.start()
         info2 = host2.info()
         for param, value in params.items():
             self.assertTrue(info2['procInfo']['params'].get(param, value) == value)
@@ -238,6 +244,7 @@ class HostTestCase(unittest.TestCase):
         self.host = Host(self.mongod, {"journal": False})
         self.host.start(30)
         os.kill(self.host.pid, 9)
+        time.sleep(1)
         self.assertTrue(self.host._is_locked)
         self.assertTrue(self.host.start(20))
 
@@ -263,10 +270,13 @@ class HostTestCase(unittest.TestCase):
         s.close()
 
     def test_is_alive(self):
+        logger.info('** start **')
         self.host.start()
         self.assertTrue(self.host.is_alive)
+        logger.info('** stop **')
         self.host.stop()
         self.assertFalse(self.host.is_alive)
+        logger.info('** restart **')
         self.host.restart()
         self.assertTrue(self.host.is_alive)
 
@@ -293,6 +303,7 @@ class HostAuthTestCase(unittest.TestCase):
     def tearDown(self):
         if hasattr(self, 'host'):
             self.host.stop()
+            time.sleep(10)
             self.host.cleanup()
 
     def test_mongos(self):
@@ -319,6 +330,7 @@ class HostAuthTestCase(unittest.TestCase):
         self.assertTrue(isinstance(self.host.connection.admin.collection_names(), list))
         c = pymongo.MongoClient(self.host.host, self.host.port)
         self.assertRaises(pymongo.errors.OperationFailure, c.admin.collection_names)
+        time.sleep(10)
         self.host.restart()
         c = pymongo.MongoClient(self.host.host, self.host.port)
         self.assertRaises(pymongo.errors.OperationFailure, c.admin.collection_names)

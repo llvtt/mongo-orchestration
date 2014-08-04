@@ -10,6 +10,7 @@ from lib.container import Container
 import pymongo
 import os
 import tempfile
+import time
 import stat
 
 
@@ -185,6 +186,7 @@ class Host(object):
         return True of False"""
         try:
             if self.cfg.get('dbpath', None) and self._is_locked:
+                logger.debug("repairing mongodb")
                 # repair if needed
                 lib.process.repair_mongo(self.name, self.cfg['dbpath'])
 
@@ -279,6 +281,7 @@ class Hosts(Singleton, Container):
         """
         host = self._storage.pop(host_id)
         host.stop()
+        time.sleep(1)
         host.cleanup()
 
     def db_command(self, host_id, command, arg=None, is_eval=False):
