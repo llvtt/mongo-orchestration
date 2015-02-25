@@ -611,6 +611,19 @@ class ReplicaSetTestCase(unittest.TestCase):
             # No ConnectionFailure/AutoReconnect.
             connected(pymongo.MongoClient(host))
 
+    def test_rs_settings(self):
+        self.repl_cfg = {
+            'rsParams': {'chainingAllowed': True},
+            'members': [{'procParams': {
+                'logpath': '/Users/luke/code/mongo-orchestration/asdf.log'}}]
+        }
+        self.repl = ReplicaSet(self.repl_cfg)
+        if SERVER_VERSION >= (2, 8):
+            config = self.repl.connection().admin.command('replSetGetConfig')
+        else:
+            config = self.repl.connection().local.system.replset.find_one()
+        self.assertTrue(config['config']['settings'].get('chainingAllowed'))
+
 
 class ReplicaSetSSLTestCase(SSLTestCase):
 
